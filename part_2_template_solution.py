@@ -4,7 +4,16 @@
 import numpy as np
 from numpy.typing import NDArray
 from typing import Any
-
+import utils as u
+import new_utils as nu
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import confusion_matrix
+from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import (
+    ShuffleSplit,
+    cross_validate,
+    KFold,
+)
 # ======================================================================
 
 # I could make Section 2 a subclass of Section 1, which would facilitate code reuse.
@@ -69,8 +78,30 @@ class Section2:
         # return values:
         # Xtrain, ytrain, Xtest, ytest: the data used to fill the `answer`` dictionary
 
-        Xtrain = Xtest = np.zeros([1, 1], dtype="float")
-        ytrain = ytest = np.zeros([1], dtype="int")
+        Xtrain, ytrain, Xtest, ytest = u.prepare_data()
+
+        nb_classes_train,nb_classes_test,class_count_train,class_count_test,length_Xtrain,length_Xtest,length_ytrain,length_ytest,max_Xtrain,max_Xtest = nu.eda(Xtrain,Xtest,ytrain,ytest)
+        print("nb_classes_train: number of classes in the training set: ", nb_classes_train)
+        print("nb_classes_test: number of classes in the testing set: ", nb_classes_test)
+        print("class_count_train: number of elements in each class in the training set: ",class_count_train)
+        print("class_count_test: number of elements in each class in the testing set: ", class_count_test)
+        print("length_Xtrain: number of elements in the training set: ", length_Xtrain)
+        print("length_Xtest: number of elements in the testing set: ", length_Xtest)
+        print("length_ytrain: number of labels in the training set: ", length_ytrain)
+        print("length_ytest: number of labels in the testing set: ", length_ytest)
+        # - max_Xtrain: maximum value in the training set
+        # - max_Xtest: maximum value in the testing set
+
+        answer["nb_classes_train"] = nb_classes_train
+        answer["nb_classes_test"] = nb_classes_test
+        answer["class_count_train"] = class_count_train
+        answer["class_count_test"] = class_count_test
+        answer["length_Xtrain"] = length_Xtrain
+        answer["length_Xtest"] = length_Xtest
+        answer["length_ytrain"] = length_ytrain
+        answer["length_ytest"] = length_ytest
+        answer["max_Xtrain"] = max_Xtrain
+        answer["max_Xtest"] = max_Xtest
 
         return answer, Xtrain, ytrain, Xtest, ytest
 
@@ -101,8 +132,33 @@ class Section2:
     ) -> dict[int, dict[str, Any]]:
         """ """
         # Enter your code and fill the `answer`` dictionary
+        # Xtrain, ytrain, Xtest, ytest = u.prepare_data()
+        # Xtrain = nu.scale_data(Xtrain)
+        # Xtest = nu.scale_data(Xtest)
+
+
         answer = {}
 
+        for ntrain,ntest in zip(ntrain_list,ntest_list):
+            Xtrain = X[0:ntrain, :]
+            ytrain = y[0:ntrain]
+            Xtest = Xtest[0:ntest, :]
+            ytest = ytest[0:ntest]
+
+            answer[ntrain] = {}
+            answer[ntrain]["partC"] = nu.part1_partC(self.seed,Xtrain,ytrain)
+            answer[ntrain]["partD"] = nu.part1_partD(self.seed,Xtrain,ytrain)
+            answer[ntrain]["partF"] = nu.part1_partF(self.seed,Xtrain,ytrain,Xtest,ytest)
+            answer[ntrain]["ntrain"] = len(Xtrain)
+            answer[ntrain]["ntest"] = len(Xtest)
+            answer[ntrain]["class_count_train"] = nu.value_counts(ytrain)
+            answer[ntrain]["class_count_test"] = nu.value_counts(ytest)
+        print("The accuracy scores increase as a function of n-train. The highest accuracy is observed for Logistic regression")
+
+        print("Multi-class logistic regression is an extension of binary logistic regression, which is used when there are more than two classes to predict. It's a type of classification algorithm that uses the logistic function to model the probability that a given input belongs to each class.")
+        print("One-vs-Rest (OvR) - In this approach, for each class, a binary logistic regression model is trained to distinguish that class from all other classes combined.")
+        print("One-vs-One (OvO) - In this approach, a binary logistic regression model is trained for every pair of classes. If there are K classes, there are total K * (K - 1) / 2 classifiers. During prediction, each classifier votes for one class, and the class with the most votes is assigned to the input.")
+        
         """
         `answer` is a dictionary with the following keys:
            - 1000, 5000, 10000: each key is the number of training samples

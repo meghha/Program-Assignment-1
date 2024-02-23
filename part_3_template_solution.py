@@ -1,6 +1,14 @@
 import numpy as np
 from numpy.typing import NDArray
 from typing import Any
+import new_utils as nu
+import utils as u
+from sklearn import svm
+from sklearn.model_selection import *
+from sklearn.metrics import *
+from sklearn.utils.class_weight import compute_class_weight
+from sklearn.linear_model import LogisticRegression
+import matplotlib.pyplot as plt
 
 """
    In the first two set of tasks, we will narrowly focus on accuracy - 
@@ -67,6 +75,7 @@ class Section3:
         """ """
         # Enter code and return the `answer`` dictionary
 
+
         answer = {}
 
         """
@@ -88,6 +97,47 @@ class Section3:
         - "score_train" : the topk accuracy score for the training set
         - "score_test" : the topk accuracy score for the testing set
         """
+ 
+        clf = LogisticRegression(max_iter=300, random_state=42, solver='saga')
+        clf.fit(Xtrain, ytrain)
+        k_values = [1, 2, 3, 4, 5]
+
+        # Calculate top k scores
+        train_scores, test_scores = nu.calculate_top_k_scores(clf, Xtrain, ytrain, Xtest, ytest, k_values)
+
+        # Plot k vs score for both training and testing data
+
+
+        # Plot for training data
+        # nu.plot_k_vs_score(train_scores, "Training Data")
+
+        # Plot for testing data
+        # nu.plot_k_vs_score(test_scores, "Testing Data")
+
+        # Return the results
+        plot_k_vs_score_train = train_scores
+        plot_k_vs_score_test = test_scores
+
+        answer[1] = {}
+        answer[2] = {}
+        answer[3] = {}
+        answer[4] = {}
+        answer[5] = {}
+        answer[1]["score_train"] = train_scores[0][1]
+        answer[1]["score_test"] = test_scores[0][1]
+        answer[2]["score_train"] = train_scores[1][1]
+        answer[2]["score_test"] = test_scores[1][1]
+        answer[3]["score_train"] = train_scores[2][1]
+        answer[3]["score_test"] = test_scores[2][1]
+        answer[4]["score_train"] = train_scores[3][1]
+        answer[4]["score_test"] = test_scores[3][1]
+        answer[5]["score_train"] = train_scores[4][1]
+        answer[5]["score_test"] = test_scores[4][1]
+        answer["clf"] = clf
+        answer["plot_k_vs_score_train"] = plot_k_vs_score_train
+        answer["plot_k_vs_score_test"]  = plot_k_vs_score_test
+        answer["text_rate_accuracy_change"] = "The accuracy of the test data rises rapidly, as the value of k increases. It also plateaus after about k=3"
+        answer["text_is_topk_useful_and_why"] = "The top k accuracy is useful because In multi-class classification problems where the number of classes is large, traditional accuracy might not provide a clear picture of how well the model is performing. Top-k accuracy allows for a more comprehensive evaluation by considering a range of possible correct predictions."
 
         return answer, Xtrain, ytrain, Xtest, ytest
 
@@ -111,11 +161,31 @@ class Section3:
     ]:
         """"""
         # Enter your code and fill the `answer` dictionary
+        Xtrain, ytrain = nu.filter_out_7_9s(X, y)
+        Xtest, ytest = nu.replace_7_9s(Xtest, ytest)
+
+        # Xtrain = nu.scale_data(Xtrain)
+        # Xtest = nu.scale_data(Xtest)
+
         answer = {}
 
         # Answer is a dictionary with the same keys as part 1.B
+                # Enter your code and fill the `answer` dictionary
+        print("Length of X train: ", len(Xtrain))
+        print("Length of X test: ", len(Xtest))
+        print("Length of y train: ", len(ytrain))
+        print("Length of y test: ", len(ytest))
+        print("Max value of X train: ", np.max(Xtrain))
+        print("Max value of X test: ", np.max(Xtest))
 
-        return answer, X, y, Xtest, ytest
+        answer["length_Xtrain"] = len(Xtrain)  # Number of samples
+        answer["length_Xtest"] = len(Xtest)
+        answer["length_ytrain"] = len(ytrain)
+        answer["length_ytest"] = len(ytest)
+        answer["max_Xtrain"] = np.max(Xtrain)
+        answer["max_Xtest"] = np.max(Xtest)
+
+        return answer, Xtrain, ytrain, Xtest, ytest
 
     # --------------------------------------------------------------------------
     """
@@ -137,7 +207,44 @@ class Section3:
         """"""
 
         # Enter your code and fill the `answer` dictionary
+
+        # Xtrain, ytrain = nu.filter_out_7_9s(X, y)
+        # Xtest, ytest = nu.replace_7_9s(Xtest, ytest)
+
+        # Xtrain = nu.scale_data(Xtrain)
+        # Xtest = nu.scale_data(Xtest)
+
+        clf = svm.SVC(kernel="linear",random_state=self.seed)
+        cv = StratifiedKFold(n_splits=5)
+
+        scorers = {
+            'accuracy': 'accuracy',
+            'precision': make_scorer(precision_score, average='macro'),
+            'recall': make_scorer(recall_score, average='macro'),
+            'F1': make_scorer(f1_score, average='macro')
+            }
+        # Perform cross-validation with stratified k-fold
+        metrics = {}
+        for key, value in scorers.items():
+            metrics[key]=cross_validate(clf, X, y, cv=cv,scoring=value)['test_score']
+        
+
+        scores = nu.scores_part3(metrics)
+
+        clf.fit(X, y)
+
+        ytrain_pred = clf.predict(X)
+        ytest_pred = clf.predict(Xtest)
+
         answer = {}
+        answer["scores"] = scores
+        answer["cv"] = cv
+        answer["clf"] = clf
+        answer["is_precision_higher_than_recall"] = True if scores["mean_precision"]>scores["mean_recall"] else False
+        answer["explain_is_precision_higher_than_recall"] = "Precision being higher than recall typically occurs when the model has a higher tendency to make fewer false positive predictions while potentially missing some true positive predictions. This scenario is commonly encountered in situations where the cost of false positives is higher than false negatives, or when the dataset is imbalanced."
+        answer["confusion_matrix_train"] = confusion_matrix(y,ytrain_pred)
+        answer["confusion_matrix_test"] = confusion_matrix(ytest,ytest_pred)
+
 
         """
         Answer is a dictionary with the following keys: 
@@ -164,7 +271,9 @@ class Section3:
 
     # --------------------------------------------------------------------------
     """
-    D. Repeat the same steps as part 3.C but apply a weighted loss function (see the class_weights parameter).  Print out the class weights, and comment on the performance difference. Use the `compute_class_weight` argument of the estimator to compute the class weights. 
+    D. Repeat the same steps as part 3.C but apply a weighted loss function (see the class_weights parameter).  
+    Print out the class weights, and comment on the performance difference. 
+    Use the `compute_class_weight` argument of the estimator to compute the class weights. 
     """
 
     def partD(
@@ -175,8 +284,65 @@ class Section3:
         ytest: NDArray[np.int32],
     ) -> dict[str, Any]:
         """"""
-        # Enter your code and fill the `answer` dictionary
+
+        # Xtrain, ytrain = nu.filter_out_7_9s(X, y)
+        # Xtest, ytest = nu.replace_7_9s(Xtest, ytest)
+
+        Xtrain = X.copy()
+        ytrain = y.copy()
+
+        # Compute class weights
+        class_labels = np.unique(ytrain)
+        class_weights = compute_class_weight(class_weight='balanced', classes=np.unique(ytrain), y=ytrain)
+
+        # Create dictionary of class weights
+        class_weight_dict = {class_label: weight for class_label, weight in zip(class_labels, class_weights)}
+
+        # Print class weights
+        for class_label, class_weight in class_weight_dict.items():
+            print(f"Class {class_label}: Weight {class_weight}")
+
+        clf = svm.SVC(kernel="linear",random_state=self.seed,class_weight=class_weight_dict)
+        cv = StratifiedKFold(n_splits=5)
+
+        scorers = {
+            'accuracy': 'accuracy',
+            'precision': make_scorer(precision_score, average='macro'),
+            'recall': make_scorer(recall_score, average='macro'),
+            'F1': make_scorer(f1_score, average='macro')
+            }
+        # Perform cross-validation with stratified k-fold
+        metrics = {}
+        for key, value in scorers.items():
+            metrics[key]=cross_validate(clf, Xtrain, ytrain, cv=cv,scoring=value)['test_score']
+        
+
+        scores = nu.scores_part3(metrics)
+
+        clf.fit(Xtrain, ytrain)
+
+        ytrain_pred = clf.predict(Xtrain)
+        ytest_pred = clf.predict(Xtest)
+
         answer = {}
+        
+        answer["scores"] = scores
+        answer["cv"] = cv
+        answer["clf"] = clf
+        answer["class_weights"] = class_weight_dict
+        answer["is_precision_higher_than_recall"] = True if scores["mean_precision"]>scores["mean_recall"] else False
+        answer["explain_is_precision_higher_than_recall"] = "Precision being higher than recall typically occurs when the model has a higher tendency to make fewer false positive predictions while potentially missing some true positive predictions. This scenario is commonly encountered in situations where the cost of false positives is higher than false negatives, or when the dataset is imbalanced."
+        answer["confusion_matrix_train"] = confusion_matrix(ytrain,ytrain_pred)
+        answer["confusion_matrix_test"] = confusion_matrix(ytest,ytest_pred)
+        answer["explain_purpose_of_class_weights"] = "The purpose of using class weights in SVM functions is to give more importance to the minority class during the training process. This is achieved by assigning higher weights to misclassifications of the minority class compared to the majority class. By doing so, the SVM algorithm learns to optimize the margin with respect to both classes, not just the majority class."
+        answer["explain_performance_difference"] = "The accuracy has improved vastly. This time the recall is higher than precision. This is because of the class beiing balanced."
+
+
+
+        # Enter your code and fill the `answer` dictionary
+       
+
+
 
         """
         Answer is a dictionary with the following keys: 
